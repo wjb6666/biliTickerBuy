@@ -417,7 +417,7 @@ def go_start_tab():
         stop_all_btn = gr.Button(
             "一键终止",
             variant="stop",
-            elem_classes="btb-soft-button btb-task-button btb-task-button--stop",
+            elem_classes="btb-soft-button btb-stop-all-button",
             scale=0,
             min_width=120,
         )
