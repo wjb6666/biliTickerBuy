@@ -37,6 +37,8 @@ class RuntimeOptions:
     serverchanKey: str = ""
     barkToken: str = ""
     meowNickname: str = ""
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
     https_proxys: str = "none"
     proxy_api_url: str = ""
     proxy_api_protocol: str = "http"
@@ -307,6 +309,8 @@ def build_runtime_options(
     serverchanKey: str = "",
     barkToken: str = "",
     meowNickname: str = "",
+    telegram_bot_token: str = "",
+    telegram_chat_id: str = "",
     https_proxys: str = "none",
     proxy_api_url: str = "",
     proxy_api_protocol: str = "http",
@@ -350,6 +354,8 @@ def build_runtime_options(
         serverchanKey=serverchanKey,
         barkToken=barkToken,
         meowNickname=meowNickname,
+        telegram_bot_token=telegram_bot_token,
+        telegram_chat_id=telegram_chat_id,
         https_proxys=https_proxys,
         proxy_api_url=proxy_api_url,
         proxy_api_protocol=proxy_api_protocol,
