@@ -50,7 +50,9 @@ def _build_task_log_path(filename: str) -> str:
     return os.path.join(LOG_DIR, f"{safe_name}_{uuid.uuid4().hex[:8]}.log")
 
 
-def _build_task_proxy_list(proxy_string: str | None, *, include_direct: bool) -> list[str]:
+def _build_task_proxy_list(
+    proxy_string: str | None, *, include_direct: bool
+) -> list[str]:
     proxies = ProxyManager.parse_proxy_list(proxy_string)
     proxies = [proxy for proxy in proxies if proxy.lower() != "none"]
     if include_direct:
