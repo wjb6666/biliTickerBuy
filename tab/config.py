@@ -4,6 +4,7 @@ import gradio as gr
 from loguru import logger
 
 from app_cmd.config.BuyConfig import BuyConfig
+from task.page_gate import normalize_mobile_ticket_page_url
 from util import (
     ConfigDB,
 )
@@ -251,6 +252,35 @@ def go_settings_tab(header_ui):
     def update_use_local_token(value):
         ConfigDB.insert("useLocalToken", value)
         return gr.update(value=ConfigDB.get("useLocalToken"))
+
+    def update_wait_for_buy_button(value):
+        ConfigDB.insert("waitForBuyButton", bool(value))
+        return gr.update(value=ConfigDB.get_as_bool("waitForBuyButton", False))
+
+    def update_buy_page_url(value):
+        raw = str(value or "").strip()
+        if not raw:
+            ConfigDB.insert("buyPageUrl", "")
+            return gr.update(value="")
+        try:
+            normalized = normalize_mobile_ticket_page_url(raw)
+        except ValueError as exc:
+            gr.Warning(f"抢票链接未保存：{exc}")
+            return gr.update(value=ConfigDB.get("buyPageUrl") or "")
+        ConfigDB.insert("buyPageUrl", normalized)
+        gr.Info("已保存并转换为移动端购票页链接。")
+        return gr.update(value=normalized)
+
+    def update_buy_page_timeout_seconds(value):
+        return _update_positive_int_config("buyPageTimeoutSeconds", value, 60)
+
+    def update_buy_page_check_before_seconds(value):
+        try:
+            parsed = max(0, int(value))
+        except (TypeError, ValueError):
+            parsed = 5
+        ConfigDB.insert("buyPageCheckBeforeSeconds", parsed)
+        return gr.update(value=ConfigDB.get_as_int("buyPageCheckBeforeSeconds", 5))
 
     def update_proxy_assignment_strategy(value):
         ConfigDB.insert("proxyAssignmentStrategy", value)
@@ -761,6 +791,32 @@ def go_settings_tab(header_ui):
                         value=buy_defaults.use_local_token,
                         info="默认关闭。开启后，非 hotproject 直接使用本地生成 token。",
                     )
+                    gr.Markdown("## 开售页面校验")
+                    wait_for_buy_button_ui = gr.Checkbox(
+                        label="等待立即购票后再抢票",
+                        value=buy_defaults.wait_for_buy_button,
+                        info="开启后，在开售前检查移动端购票页；开售时未出现“立即购票/立即购买”不会发送下单请求。",
+                    )
+                    buy_page_url_ui = gr.Textbox(
+                        label="抢票链接",
+                        value=buy_defaults.buy_page_url,
+                        placeholder="支持 PC 或移动端活动详情链接；保存时会自动转换为移动端链接。",
+                        info="留空时会根据上传的抢票配置自动生成对应活动的移动端链接。",
+                    )
+                    with gr.Row():
+                        buy_page_check_before_seconds_ui = gr.Number(
+                            label="抢票前开始同步购票页状态（秒）",
+                            value=buy_defaults.buy_page_check_before_seconds,
+                            minimum=0,
+                            step=1,
+                        )
+                        buy_page_timeout_seconds_ui = gr.Number(
+                            label="等待立即购票超时时间（秒）",
+                            value=buy_defaults.buy_page_timeout_seconds,
+                            minimum=1,
+                            step=1,
+                            info="超过此时间仍未出现立即购票，当前抢票程序会终止。",
+                        )
                     request_interval_ui = gr.Number(
                         label="默认抢票间隔（毫秒）",
                         value=int(buy_defaults.interval or DEFAULT_REQUEST_INTERVAL),
@@ -936,6 +992,29 @@ def go_settings_tab(header_ui):
         inputs=use_local_token_ui,
         outputs=use_local_token_ui,
     )
+    wait_for_buy_button_ui.change(
+        fn=update_wait_for_buy_button,
+        inputs=wait_for_buy_button_ui,
+        outputs=wait_for_buy_button_ui,
+    )
+    buy_page_url_ui.submit(
+        fn=update_buy_page_url,
+        inputs=buy_page_url_ui,
+        outputs=buy_page_url_ui,
+    )
+    buy_page_url_ui.blur(
+        fn=update_buy_page_url,
+        inputs=buy_page_url_ui,
+        outputs=buy_page_url_ui,
+    )
+    _bind_number_commit(
+        buy_page_check_before_seconds_ui,
+        update_buy_page_check_before_seconds,
+    )
+    _bind_number_commit(
+        buy_page_timeout_seconds_ui,
+        update_buy_page_timeout_seconds,
+    )
     _bind_number_commit(
         request_interval_ui,
         update_request_interval,
@@ -1013,6 +1092,10 @@ def go_settings_tab(header_ui):
             gr.update(value=hide_header),
             gr.update(visible=not hide_header),
             gr.update(value=buy_defaults.use_local_token),
+            gr.update(value=buy_defaults.wait_for_buy_button),
+            gr.update(value=buy_defaults.buy_page_url),
+            gr.update(value=buy_defaults.buy_page_check_before_seconds),
+            gr.update(value=buy_defaults.buy_page_timeout_seconds),
             gr.update(value=int(buy_defaults.interval or DEFAULT_REQUEST_INTERVAL)),
             gr.update(value=buy_defaults.h2_connections_per_source_ip),
             gr.update(value=buy_defaults.create_retry_limit),
@@ -1054,6 +1137,10 @@ def go_settings_tab(header_ui):
         hide_header_ui,
         header_ui,
         use_local_token_ui,
+        wait_for_buy_button_ui,
+        buy_page_url_ui,
+        buy_page_check_before_seconds_ui,
+        buy_page_timeout_seconds_ui,
         request_interval_ui,
         h2_connections_per_source_ip_ui,
         create_retry_limit_ui,

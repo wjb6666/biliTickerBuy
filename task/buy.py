@@ -45,6 +45,11 @@ from task.buy_helpers import (
     summarize_non_json_response as _summarize_non_json_response,
     wait_until_start as _wait_until_start,
 )
+from task.page_gate import (
+    check_ticket_page_availability,
+    mobile_ticket_page_url,
+    normalize_mobile_ticket_page_url,
+)
 from task.buy_types import (
     BuyStreamEvent,
     BuyStreamState,
@@ -432,6 +437,31 @@ def buy_stream(config: BuyConfig):
     effective_retry_limit = max(1, int(config.create_retry_limit))
     effective_batch_size = max(1, int(config.create_request_batch_size))
     rate_limit_delay_ms = max(0, int(config.rate_limit_delay_ms))
+    wait_for_buy_button = bool(config.wait_for_buy_button)
+    page_status_check = None
+    page_check_before_seconds = max(0, int(config.buy_page_check_before_seconds))
+    page_timeout_seconds = max(1, int(config.buy_page_timeout_seconds))
+    if wait_for_buy_button:
+        configured_page_url = str(config.buy_page_url or "").strip()
+        try:
+            buy_page_url = (
+                normalize_mobile_ticket_page_url(configured_page_url)
+                if configured_page_url
+                else mobile_ticket_page_url(tickets_info["project_id"])
+            )
+        except ValueError as exc:
+            buy_page_url = configured_page_url
+            logger.warning("购票页链接无效，将在校验阶段等待至超时：{}", exc)
+
+        def page_status_check():
+            return check_ticket_page_availability(_request, buy_page_url)
+
+        logger.info(
+            "已开启立即购票校验：移动端链接={}，提前{}秒开始，超时{}秒",
+            buy_page_url,
+            page_check_before_seconds,
+            page_timeout_seconds,
+        )
 
     def emit_reprepare(reason: str):
         message = _format_reprepare_reason(reason)
@@ -493,10 +523,20 @@ def buy_stream(config: BuyConfig):
     for wait_state in _wait_until_start(
         config.time_start,
         warmup=refresh_hot_and_warm,
+        page_status_check=page_status_check,
+        page_check_before_seconds=page_check_before_seconds,
+        page_timeout_seconds=page_timeout_seconds,
     ):
         wait_message = wait_state.get("message")
         countdown_value = wait_state.get("countdown")
         countdown_seconds = wait_state.get("countdown_seconds")
+        if wait_state.get("page_gate_timeout"):
+            yield emit(
+                "error",
+                wait_message,
+                BuyStreamUpdate(status="failed", stage="购票页校验超时"),
+            )
+            return
         stage_value = None
         if isinstance(wait_message, str) and wait_message.startswith("0)"):
             stage_value = "等待开票"

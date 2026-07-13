@@ -170,6 +170,45 @@ class BuyConfig(BasicConfig):
     )
     """Delay after receiving HTTP 429, in milliseconds."""
 
+    wait_for_buy_button: bool = config_field(
+        False,
+        env="BTB_WAIT_FOR_BUY_BUTTON",
+        runtime="wait_for_buy_button",
+        db="waitForBuyButton",
+        cast=str_to_bool,
+        cli_true="--wait-for-buy-button",
+    )
+    """Wait for the mobile page's immediate-buy button before ordering."""
+
+    buy_page_url: str = config_field(
+        "",
+        env="BTB_BUY_PAGE_URL",
+        runtime="buy_page_url",
+        db="buyPageUrl",
+        cli="--buy-page-url",
+    )
+    """Ticket detail URL used by the immediate-buy page gate."""
+
+    buy_page_timeout_seconds: int = config_field(
+        60,
+        env="BTB_BUY_PAGE_TIMEOUT_SECONDS",
+        runtime="buy_page_timeout_seconds",
+        db="buyPageTimeoutSeconds",
+        cli="--buy-page-timeout-seconds",
+        cast=int,
+    )
+    """Maximum post-start wait time for the immediate-buy button."""
+
+    buy_page_check_before_seconds: int = config_field(
+        5,
+        env="BTB_BUY_PAGE_CHECK_BEFORE_SECONDS",
+        runtime="buy_page_check_before_seconds",
+        db="buyPageCheckBeforeSeconds",
+        cli="--buy-page-check-before-seconds",
+        cast=int,
+    )
+    """Seconds before ticket start to begin polling the mobile ticket page."""
+
     refresh_interval_min_count: int = config_field(
         10,
         env="BTB_REFRESH_INTERVAL_MIN_COUNT",

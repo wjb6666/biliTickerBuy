@@ -58,6 +58,10 @@ class RuntimeOptions:
     auto_open_payment_url: bool = True
     log_level: str = "standard"
     log_retention_days: int = 7
+    wait_for_buy_button: bool = False
+    buy_page_url: str = ""
+    buy_page_timeout_seconds: int = 60
+    buy_page_check_before_seconds: int = 5
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> "RuntimeOptions":
@@ -331,6 +335,10 @@ def build_runtime_options(
     auto_open_payment_url: bool = True,
     log_level: str = "standard",
     log_retention_days: int = 7,
+    wait_for_buy_button: bool = False,
+    buy_page_url: str = "",
+    buy_page_timeout_seconds: int = 60,
+    buy_page_check_before_seconds: int = 5,
 ) -> RuntimeOptions:
     return RuntimeOptions(
         interval=normalize_interval(interval),
@@ -389,6 +397,14 @@ def build_runtime_options(
         auto_open_payment_url=auto_open_payment_url,
         log_level=str(log_level or "standard").lower(),
         log_retention_days=normalize_positive_int(log_retention_days, default=7),
+        wait_for_buy_button=bool(wait_for_buy_button),
+        buy_page_url=str(buy_page_url or "").strip(),
+        buy_page_timeout_seconds=normalize_positive_int(
+            buy_page_timeout_seconds, default=60
+        ),
+        buy_page_check_before_seconds=normalize_non_negative_interval(
+            buy_page_check_before_seconds, default=5
+        ),
     )
 
 
